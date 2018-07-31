@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split, learning_curve, validation
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_log_error
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.model_selection import KFold
 from sklearn.metrics import classification_report
 import warnings
 
@@ -200,8 +201,6 @@ selected_features = ['distance_haversine', 'direction', 'dayofweek', 'Hour', 'Mo
 X_train = train[selected_features]
 X_test = test[selected_features]
 
-X_train1, X_cv, y_train1, y_cv = train_test_split(X_train, y_train, test_size=0.25, random_state=33)
-
 
 def regressor_moduel(estimator, X_train, y_train, X_train1, X_cv, y_train1, y_cv):
     print('cross_val_score: ', end='')
@@ -218,16 +217,35 @@ def regressor_moduel(estimator, X_train, y_train, X_train1, X_cv, y_train1, y_cv
     print(np.sqrt(mean_squared_log_error(y_cv, y_predict)))
 
 
-XGB = xgb.XGBRegressor()
+X_train=X_train.values # dataframe to numpy.array
+y_train=y_train.values
+X_test=X_test.values
 
-# regressor_moduel(xgb, X_train, y_train, X_train1, X_cv, y_train1, y_cv)
+kf = KFold(n_splits=10)
+kf.get_n_splits(X_train)
 
-# _ = input('Press [Enter] to continue.')
+for train_index, test_index in kf.split(X_train):
+    # print("TRAIN:", train_index, "TEST:", test_index)
+    X_kf_train, X_kf_test = X_train[train_index], X_train[test_index]
+    y_kf_train, y_kf_test = y_train[train_index], y_train[test_index]
+
+dtrain = xgb.DMatrix(X_kf_train, label=y_kf_train)
+dvalid = xgb.DMatrix(X_kf_test, label=y_kf_test)
+dtest = xgb.DMatrix(X_test)
+watchlist = [(dtrain, 'train'), (dvalid, 'valid')]
+
+# Try different parameters! My favorite is random search :)
+xgb_pars = {'min_child_weight': 10, 'eta': 0.04, 'colsample_bytree': 0.8, 'max_depth': 15,
+            'subsample': 0.75, 'lambda': 2, 'nthread': -1, 'booster' : 'gbtree', 'silent': 1, 'gamma' : 0,
+            'eval_metric': 'rmse', 'objective': 'reg:linear'}
+
+xgb_model = xgb.train(xgb_pars, dtrain, 200, watchlist, early_stopping_rounds=250,
+                  maximize=False, verbose_eval=15)
+
 
 # ----------------------------------------------- 输出csv结果 -----------------------------------------------------------
 
-XGB.fit(X_train, y_train)
-y_predict = XGB.predict(X_test)
+y_predict=xgb_model.predict(dtest)
 
 y_predict = np.expm1(y_predict)
 
