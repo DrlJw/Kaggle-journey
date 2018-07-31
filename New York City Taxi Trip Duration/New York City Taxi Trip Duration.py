@@ -6,7 +6,6 @@ from sklearn.model_selection import train_test_split, learning_curve, validation
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import mean_squared_log_error
 from sklearn.cluster import MiniBatchKMeans
-from sklearn.preprocessing import scale
 from sklearn.metrics import classification_report
 import warnings
 
@@ -196,9 +195,6 @@ test = test.merge(test_street_info, how='left', on='id')
 # ----------------------------------------------- 训练模型并评价 ---------------------------------------------------------
 
 y_train = train['log_trip_duration']
-MEAN = y_train.mean()
-STD = y_train.std()
-y_train = scale(y_train)
 selected_features = ['distance_haversine', 'direction', 'dayofweek', 'Hour', 'Month', 'pickup_cluster',
                      'total_distance', 'total_travel_time', 'number_of_steps','extreme_weather']
 X_train = train[selected_features]
@@ -217,8 +213,8 @@ def regressor_moduel(estimator, X_train, y_train, X_train1, X_cv, y_train1, y_cv
     print('train score: ', end='')
     print(estimator.score(X_train1, y_train1))
     y_predict = estimator.predict(X_cv)
-    y_cv = np.expm1(y_cv * STD + MEAN)
-    y_predict = np.expm1(y_predict * STD + MEAN)
+    y_cv = np.expm1(y_cv)
+    y_predict = np.expm1(y_predict)
     print(np.sqrt(mean_squared_log_error(y_cv, y_predict)))
 
 
@@ -233,7 +229,7 @@ XGB = xgb.XGBRegressor()
 XGB.fit(X_train, y_train)
 y_predict = XGB.predict(X_test)
 
-y_predict = np.expm1(y_predict*STD+MEAN)
+y_predict = np.expm1(y_predict)
 
 xgb_submission = pd.DataFrame({'id': test['id'], 'trip_duration': y_predict})
 print(xgb_submission.shape)
