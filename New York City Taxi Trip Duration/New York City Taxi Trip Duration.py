@@ -218,6 +218,7 @@ def regressor_moduel(estimator, X_train, y_train, X_train1, X_cv, y_train1, y_cv
 
     
 # 自定义xgboost eval_metric，RMSLE
+# 在使用xgboost之前，先对y进行log1p转换，然后metric选择rmse就好了。预测出的结果也是log后的，所以真实结果还需要进行exp转换一下。
 def evalerror(preds, dtrain):
     labels = dtrain.get_label()
     return 'RMSLE', np.sqrt(mean_squared_log_error(preds, labels))
@@ -243,10 +244,10 @@ watchlist = [(dtrain, 'train'), (dvalid, 'valid')]
 # Try different parameters! My favorite is random search :)
 xgb_pars = {'min_child_weight': 10, 'eta': 0.04, 'colsample_bytree': 0.8, 'max_depth': 15,
             'subsample': 0.75, 'lambda': 2, 'nthread': -1, 'booster' : 'gbtree', 'silent': 1, 'gamma' : 0,
-            'objective': 'reg:linear'}
+            'objective': 'reg:linear', 'eval_metric': 'rmse'}
 
 xgb_model = xgb.train(xgb_pars, dtrain, 200, watchlist, early_stopping_rounds=250,
-                  maximize=False, verbose_eval=15, feval=evalerror)
+                  maximize=False, verbose_eval=15)
 
 
 # ----------------------------------------------- 输出csv结果 -----------------------------------------------------------
