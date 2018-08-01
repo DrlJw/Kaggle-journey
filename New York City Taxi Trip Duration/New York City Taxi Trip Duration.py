@@ -216,6 +216,12 @@ def regressor_moduel(estimator, X_train, y_train, X_train1, X_cv, y_train1, y_cv
     y_predict = np.expm1(y_predict)
     print(np.sqrt(mean_squared_log_error(y_cv, y_predict)))
 
+    
+# 自定义xgboost eval_metric，RMSLE
+def evalerror(preds, dtrain):
+    labels = dtrain.get_label()
+    return 'RMSLE', np.sqrt(mean_squared_log_error(preds, labels))
+
 
 X_train=X_train.values # dataframe to numpy.array
 y_train=y_train.values
@@ -237,10 +243,10 @@ watchlist = [(dtrain, 'train'), (dvalid, 'valid')]
 # Try different parameters! My favorite is random search :)
 xgb_pars = {'min_child_weight': 10, 'eta': 0.04, 'colsample_bytree': 0.8, 'max_depth': 15,
             'subsample': 0.75, 'lambda': 2, 'nthread': -1, 'booster' : 'gbtree', 'silent': 1, 'gamma' : 0,
-            'eval_metric': 'rmse', 'objective': 'reg:linear'}
+            'objective': 'reg:linear'}
 
 xgb_model = xgb.train(xgb_pars, dtrain, 200, watchlist, early_stopping_rounds=250,
-                  maximize=False, verbose_eval=15)
+                  maximize=False, verbose_eval=15, feval=evalerror)
 
 
 # ----------------------------------------------- 输出csv结果 -----------------------------------------------------------
